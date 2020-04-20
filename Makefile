@@ -1,7 +1,7 @@
 install: install-deps
 
 run:
-	npx babel-node src/bin/gendiff.js
+	npx babel-node src/bin/page-loader.js
 
 install-deps:
 	yarn install
