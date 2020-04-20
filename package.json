@@ -1,0 +1,57 @@
+{
+  "name": "page-loader-saenkomm",
+  "version": "0.1.0",
+  "description": "Third hexlet project",
+  "main": "dist/index.js",
+  "bin": {
+    "gendiff": "dist/bin/page-loader.js"
+  },
+  "engines": {
+    "node": ">=13"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "build": "NODE_ENV=production babel src --out-dir dist --source-maps inline",
+    "prepublishOnly": "yarn run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SaenkoJr/backend-project-lvl3"
+  },
+  "author": "Maksim Saenko",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SaenkoJr/backend-project-lvl3/issuse"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  },
+  "homepage": "https://github.com/SaenkoJr/backend-project-lvl3",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "commander": "^4.1.0",
+    "lodash": "^4.17.15",
+    "nock": "^12.0.3"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.3",
+    "@babel/core": "^7.8.3",
+    "@babel/node": "^7.8.3",
+    "@babel/plugin-proposal-pipeline-operator": "^7.8.3",
+    "@babel/preset-env": "^7.8.3",
+    "babel-eslint": "^10.1.0",
+    "babel-jest": "^25.1.0",
+    "debug": "^4.1.1",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-babel": "^5.3.0",
+    "eslint-plugin-import": "^2.20.1",
+    "eslint-plugin-jest": "^23.6.0",
+    "jest": "^25.1.0",
+    "jest-cli": "^25.1.0"
+  }
+}
