@@ -4,21 +4,22 @@ import program from 'commander';
 
 import pageLoader from '..';
 
-program.version('0.1.0');
+program.version('0.1.4');
 
 program
-  .description('Page loader')
-  .option('-o, --output', 'specify output directory')
+  .description('Console util for download the specified site')
+  .option('-o, --output [directory]', 'specify output directory', process.cwd())
   .arguments('<url>')
   .action((url) => {
-    try {
-      const data = pageLoader(url);
-      console.log(data);
-      process.exit(0);
-    } catch (e) {
-      console.error(e);
-      process.exit(1);
-    }
+    pageLoader(url, program.output)
+      .then(() => {
+        console.log('Loading is complete');
+        process.exit(0);
+      })
+      .catch((e) => {
+        console.error(e);
+        process.exit(1);
+      });
   });
 
 program.parse(process.argv);

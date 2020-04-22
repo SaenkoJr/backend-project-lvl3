@@ -1,10 +1,10 @@
 {
   "name": "page-loader-saenkomm",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "Third hexlet project",
   "main": "dist/index.js",
   "bin": {
-    "gendiff": "dist/bin/page-loader.js"
+    "page-loader": "dist/bin/page-loader.js"
   },
   "engines": {
     "node": ">=13"
@@ -34,10 +34,10 @@
   "dependencies": {
     "axios": "^0.19.2",
     "commander": "^4.1.0",
-    "lodash": "^4.17.15",
-    "nock": "^12.0.3"
+    "lodash": "^4.17.15"
   },
   "devDependencies": {
+    "nock": "^12.0.3",
     "@babel/cli": "^7.8.3",
     "@babel/core": "^7.8.3",
     "@babel/node": "^7.8.3",
