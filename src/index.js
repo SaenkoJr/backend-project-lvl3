@@ -1,27 +1,105 @@
 import path from 'path';
-import { parse } from 'url';
-import { promises as fs } from 'fs';
+import url from 'url';
+import { promises as fs, createWriteStream } from 'fs';
 
-import { union } from 'lodash';
+import cheerio from 'cheerio';
 import axios from 'axios';
+import { union, words } from 'lodash';
 
-const buildFilename = (url) => {
-  const { hostname, pathname } = parse(url);
-  const words = union(
-    hostname.split('.'),
-    pathname.split('/'),
-  );
-
-  return words
-    .filter((word) => word.length > 0)
-    .join('-');
+const attrs = {
+  img: 'src',
+  link: 'href',
+  script: 'src',
 };
 
-export default (pageUrl, outputPath) => axios.get(pageUrl)
-  .then((response) => response.data)
-  .then((content) => {
-    const filename = `${buildFilename(pageUrl)}.html`;
-    const filepath = path.join(outputPath, filename);
+const buildNameFromUrl = (pageUrl) => {
+  const { hostname, pathname } = url.parse(pageUrl);
+  const parts = union(
+    words(hostname),
+    words(pathname),
+  );
 
-    return fs.appendFile(filepath, content);
+  return parts.join('-');
+};
+
+const buildHtmlName = (pageUrl) => buildNameFromUrl(pageUrl).concat('.', 'html');
+const buildDirName = (pageUrl) => buildNameFromUrl(pageUrl).concat('_', 'files');
+const buildResourceName = (resourcePath) => {
+  const { dir, base } = path.parse(resourcePath);
+  const formatedDirName = words(dir).join('-');
+
+  return formatedDirName.concat('-', base);
+};
+
+const isLocalLink = (link, baseUrl) => {
+  const { host } = new URL(link, baseUrl);
+  const { host: currentHost } = new URL(baseUrl);
+
+  return host === currentHost;
+};
+
+const getLinks = (html) => {
+  const $ = cheerio.load(html);
+  const links = Object.entries(attrs).map(([tag, attr]) => (
+    $(tag).toArray().map((elem) => $(elem).attr(attr))
+  ));
+
+  return links.flat();
+};
+
+const modifyLocalLinks = (html, pageUrl) => {
+  const $ = cheerio.load(html);
+
+  Object.entries(attrs).forEach(([tag, attr]) => {
+    $(tag).each((_, elem) => {
+      const link = $(elem).attr(attr);
+
+      if (isLocalLink(link, pageUrl)) {
+        const resourcePath = path.join(
+          buildDirName(pageUrl),
+          buildResourceName(link),
+        );
+
+        $(elem).attr(attr, resourcePath);
+      }
+    });
+  });
+
+  return $.html();
+};
+
+const download = (resourceUrl, outputPath) => axios
+  .get(resourceUrl, { responseType: 'stream' })
+  .then((res) => res.request.path
+      |> buildResourceName
+      |> ((filename) => path.join(outputPath, filename))
+      |> createWriteStream
+      |> res.data.pipe);
+
+export default (pageUrl, outputPath) => axios
+  .get(pageUrl)
+  .then(({ data }) => data)
+  .then((html) => {
+    const links = getLinks(html);
+
+    const htmlFilePath = path.join(outputPath, buildHtmlName(pageUrl));
+    const resourcesDirPath = path.join(outputPath, buildDirName(pageUrl));
+    const modifiedHtml = modifyLocalLinks(html, pageUrl);
+
+    return fs.writeFile(htmlFilePath, modifiedHtml)
+      .then(() => (
+        pageUrl
+          |> buildDirName
+          |> ((dirname) => path.join(outputPath, dirname))
+          |> fs.mkdir
+      ))
+      .then(() => {
+        const promises = links
+          .filter((link) => isLocalLink(link, pageUrl))
+          .map((link) => {
+            const resourceUrl = new URL(link, pageUrl);
+            return download(resourceUrl.toString(), resourcesDirPath);
+          });
+        return Promise.all(promises);
+      });
   });

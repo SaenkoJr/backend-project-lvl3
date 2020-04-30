@@ -7,30 +7,44 @@ import pageLoader from '../src';
 
 nock.disableNetConnect();
 
-const getFixturePath = (filename) => path.join(__dirname, '..', '__fixtures__', filename);
-const fixtureName = 'webpage.html';
-
 let tmpdir;
-let expected;
 
-beforeAll(async () => {
-  expected = await fs.readFile(getFixturePath(fixtureName), 'utf-8');
-});
+const url = new URL('http://www.webpage.com/somepage/');
+const expectedHtmlFileName = 'www-webpage-com-somepage.html';
+const expectedResourcesDir = 'www-webpage-com-somepage_files';
+const expectedResources = [
+  'assets-index.js',
+  'assets-webpage.css',
+  'images-mounts.jpg',
+];
+
+const getFixturePath = (name) => path.join(__dirname, '..', '__fixtures__', name);
 
 beforeEach(async () => {
   tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
 });
 
-test('page loader', async () => {
-  const url = 'http://www.webpage.com';
-  const filename = 'www-webpage-com.html';
+describe('Page loader', () => {
+  test('Download site with all resources', async () => {
+    const expected = await fs.readFile(getFixturePath('expected.html'), 'utf-8');
 
-  nock(url)
-    .get('/')
-    .reply(200, expected);
+    nock(url.origin)
+      .log(console.log)
+      .get(url.pathname)
+      .replyWithFile(200, getFixturePath('index.html'))
+      .get('/images/mounts.jpg')
+      .replyWithFile(200, getFixturePath(path.join('images', 'mounts.jpg')))
+      .get('/assets/webpage.css')
+      .replyWithFile(200, getFixturePath(path.join('assets', 'webpage.css')))
+      .get('/assets/index.js')
+      .replyWithFile(200, getFixturePath(path.join('assets', 'index.js')));
 
-  await pageLoader(url, tmpdir);
-  const result = await fs.readFile(path.join(tmpdir, filename), 'utf-8');
+    await pageLoader(url.toString(), tmpdir);
 
-  expect(result).toEqual(expected);
+    const processedHtml = await fs.readFile(path.resolve(tmpdir, expectedHtmlFileName), 'utf-8');
+    const processedFiles = await fs.readdir(path.resolve(tmpdir, expectedResourcesDir));
+
+    expect(processedHtml).toEqual(expected.trim());
+    expect(processedFiles).toEqual(expectedResources);
+  });
 });
