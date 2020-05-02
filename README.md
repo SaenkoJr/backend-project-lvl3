@@ -19,4 +19,4 @@ Options:
   -h, --help                output usage information
 ```
 
-[![asciicast](https://asciinema.org/a/YZwXafIfFkAFXytXIKNX6cqr1.svg)](https://asciinema.org/a/YZwXafIfFkAFXytXIKNX6cqr1)
+[![asciicast](https://asciinema.org/a/kCVQLUt60oJKX7wwOHjqkKE9y.svg)](https://asciinema.org/a/kCVQLUt60oJKX7wwOHjqkKE9y)
