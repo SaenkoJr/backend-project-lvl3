@@ -4,7 +4,7 @@ import program from 'commander';
 
 import pageLoader from '..';
 
-program.version('0.1.4');
+program.version('0.2.1');
 
 program
   .description('Console util for download the specified site')

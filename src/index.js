@@ -31,6 +31,11 @@ const buildResourceName = (resourcePath) => {
   return formatedDirName.concat('-', base);
 };
 
+const isResourceLink = (link) => {
+  const { ext } = path.parse(link);
+  return ext.length > 0;
+};
+
 const isLocalLink = (link, baseUrl) => {
   const { host } = new URL(link, baseUrl);
   const { host: currentHost } = new URL(baseUrl);
@@ -41,7 +46,10 @@ const isLocalLink = (link, baseUrl) => {
 const getLinks = (html) => {
   const $ = cheerio.load(html);
   const links = Object.entries(attrs).map(([tag, attr]) => (
-    $(tag).toArray().map((elem) => $(elem).attr(attr))
+    $(tag)
+      .filter((_, el) => $(el).attr(attr))
+      .toArray()
+      .map((elem) => $(elem).attr(attr))
   ));
 
   return links.flat();
@@ -51,18 +59,20 @@ const modifyLocalLinks = (html, pageUrl) => {
   const $ = cheerio.load(html);
 
   Object.entries(attrs).forEach(([tag, attr]) => {
-    $(tag).each((_, elem) => {
-      const link = $(elem).attr(attr);
+    $(tag)
+      .filter((_, el) => $(el).attr(attr))
+      .each((_, elem) => {
+        const link = $(elem).attr(attr);
 
-      if (isLocalLink(link, pageUrl)) {
-        const resourcePath = path.join(
-          buildDirName(pageUrl),
-          buildResourceName(link),
-        );
+        if (isLocalLink(link, pageUrl)) {
+          const resourcePath = path.join(
+            buildDirName(pageUrl),
+            buildResourceName(link),
+          );
 
-        $(elem).attr(attr, resourcePath);
-      }
-    });
+          $(elem).attr(attr, resourcePath);
+        }
+      });
   });
 
   return $.html();
@@ -70,17 +80,21 @@ const modifyLocalLinks = (html, pageUrl) => {
 
 const download = (resourceUrl, outputPath) => axios
   .get(resourceUrl, { responseType: 'stream' })
-  .then((res) => res.request.path
+  .then((res) => (
+    res.request.path
       |> buildResourceName
       |> ((filename) => path.join(outputPath, filename))
       |> createWriteStream
-      |> res.data.pipe);
+      |> res.data.pipe
+  ));
 
 export default (pageUrl, outputPath) => axios
   .get(pageUrl)
   .then(({ data }) => data)
   .then((html) => {
-    const links = getLinks(html);
+    const links = getLinks(html)
+      .filter(isResourceLink)
+      .filter(((link) => isLocalLink(link, pageUrl)));
 
     const htmlFilePath = path.join(outputPath, buildHtmlName(pageUrl));
     const resourcesDirPath = path.join(outputPath, buildDirName(pageUrl));
@@ -95,7 +109,6 @@ export default (pageUrl, outputPath) => axios
       ))
       .then(() => {
         const promises = links
-          .filter((link) => isLocalLink(link, pageUrl))
           .map((link) => {
             const resourceUrl = new URL(link, pageUrl);
             return download(resourceUrl.toString(), resourcesDirPath);

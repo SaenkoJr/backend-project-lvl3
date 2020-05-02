@@ -1,6 +1,6 @@
 {
   "name": "page-loader-saenkomm",
-  "version": "0.1.4",
+  "version": "0.2.1",
   "description": "Third hexlet project",
   "main": "dist/index.js",
   "bin": {
