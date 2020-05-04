@@ -29,6 +29,7 @@ describe('Page loader', () => {
     const expected = await fs.readFile(getFixturePath('expected.html'), 'utf-8');
 
     nock(url.origin)
+      .log(console.log)
       .get(url.pathname)
       .replyWithFile(200, getFixturePath('index.html'))
       .get('/images/mounts.jpg')

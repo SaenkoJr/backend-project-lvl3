@@ -5,6 +5,10 @@ import { promises as fs, createWriteStream } from 'fs';
 import cheerio from 'cheerio';
 import axios from 'axios';
 import { union, words } from 'lodash';
+import debug from 'debug';
+import 'axios-debug-log';
+
+const log = debug('page-loader');
 
 const attrs = {
   img: 'src',
@@ -70,6 +74,8 @@ const modifyLocalLinks = (html, pageUrl) => {
             buildResourceName(link),
           );
 
+          log('link has been changed (%o -> %o)', link, resourcePath);
+
           $(elem).attr(attr, resourcePath);
         }
       });
@@ -86,33 +92,41 @@ const download = (resourceUrl, outputPath) => axios
       |> ((filename) => path.join(outputPath, filename))
       |> createWriteStream
       |> res.data.pipe
-  ));
+  ))
+  .then(() => log('resource %o has been saved to %o', resourceUrl, outputPath));
 
-export default (pageUrl, outputPath) => axios
-  .get(pageUrl)
-  .then(({ data }) => data)
-  .then((html) => {
-    const links = getLinks(html)
-      .filter(isResourceLink)
-      .filter(((link) => isLocalLink(link, pageUrl)));
+export default (pageUrl, outputPath) => {
+  log('run app');
+  log('download page data from', pageUrl);
 
-    const htmlFilePath = path.join(outputPath, buildHtmlName(pageUrl));
-    const resourcesDirPath = path.join(outputPath, buildDirName(pageUrl));
-    const modifiedHtml = modifyLocalLinks(html, pageUrl);
+  return axios
+    .get(pageUrl)
+    .then(({ data }) => data)
+    .then((html) => {
+      const links = getLinks(html)
+        .filter(isResourceLink)
+        .filter(((link) => isLocalLink(link, pageUrl)));
 
-    return fs.writeFile(htmlFilePath, modifiedHtml)
-      .then(() => (
-        pageUrl
-          |> buildDirName
-          |> ((dirname) => path.join(outputPath, dirname))
-          |> fs.mkdir
-      ))
-      .then(() => {
-        const promises = links
-          .map((link) => {
-            const resourceUrl = new URL(link, pageUrl);
-            return download(resourceUrl.toString(), resourcesDirPath);
-          });
-        return Promise.all(promises);
-      });
-  });
+      const htmlFilePath = path.join(outputPath, buildHtmlName(pageUrl));
+      const resourcesDirPath = path.join(outputPath, buildDirName(pageUrl));
+      const modifiedHtml = modifyLocalLinks(html, pageUrl);
+
+      return fs.writeFile(htmlFilePath, modifiedHtml)
+        .then(() => log('page has been saved to %o', htmlFilePath))
+        .then(() => (
+          pageUrl
+            |> buildDirName
+            |> ((dirname) => path.join(outputPath, dirname))
+            |> fs.mkdir
+        ))
+        .then(() => log('resources directory has been created'))
+        .then(() => {
+          const promises = links
+            .map((link) => {
+              const resourceUrl = new URL(link, pageUrl);
+              return download(resourceUrl.toString(), resourcesDirPath);
+            });
+          return Promise.all(promises);
+        });
+    });
+};
