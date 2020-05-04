@@ -4,7 +4,20 @@ import program from 'commander';
 
 import pageLoader from '..';
 
-program.version('0.3.0');
+program.version('0.4.0');
+
+const handleError = (error) => {
+  if (error.config) {
+    const errorMsg = [
+      error.message,
+      `Resource name: ${error.config.url}`,
+    ].join('\n');
+
+    return errorMsg;
+  }
+
+  return error.message;
+};
 
 program
   .description('Console util for download the specified site')
@@ -17,7 +30,7 @@ program
         process.exit(0);
       })
       .catch((e) => {
-        console.error(e);
+        console.error(handleError(e));
         process.exit(1);
       });
   });

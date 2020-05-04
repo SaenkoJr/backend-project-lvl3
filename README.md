@@ -21,10 +21,12 @@ Options:
 
 [![asciicast](https://asciinema.org/a/kCVQLUt60oJKX7wwOHjqkKE9y.svg)](https://asciinema.org/a/kCVQLUt60oJKX7wwOHjqkKE9y)
 
-Run with debug
+### Run with debug
 
 ```
 $ DEBUG=page-loader page-loader [options] <url>
 ```
 
 [![asciicast](https://asciinema.org/a/8DW6rSa95jukQC7V9hO2M7HTN.svg)](https://asciinema.org/a/8DW6rSa95jukQC7V9hO2M7HTN)
+
+[![asciicast](https://asciinema.org/a/1LdYYXgP9c5aw2rY09j0DcAzM.svg)](https://asciinema.org/a/1LdYYXgP9c5aw2rY09j0DcAzM)
