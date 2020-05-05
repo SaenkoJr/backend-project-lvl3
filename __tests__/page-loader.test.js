@@ -24,6 +24,10 @@ beforeEach(async () => {
   tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
 });
 
+afterEach(() => {
+  nock.cleanAll();
+});
+
 describe('Page loader', () => {
   test('Download site with all resources', async () => {
     nock(url.origin)
@@ -31,10 +35,13 @@ describe('Page loader', () => {
       .get(url.pathname)
       .replyWithFile(200, getFixturePath('index.html'))
       .get('/images/mounts.jpg')
+      .delay(800)
       .replyWithFile(200, getFixturePath(path.join('images', 'mounts.jpg')))
       .get('/assets/webpage.css')
+      .delay(700)
       .replyWithFile(200, getFixturePath(path.join('assets', 'webpage.css')))
       .get('/assets/index.js')
+      .delay(1000)
       .replyWithFile(200, getFixturePath(path.join('assets', 'index.js')));
 
     const expected = await fs.readFile(getFixturePath('expected.html'), 'utf-8');

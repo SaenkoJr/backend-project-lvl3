@@ -125,7 +125,7 @@ export default (pageUrl, outputPath) => {
         .then(() => ({ localLinks, resourcesDirPath }));
     })
     .then(({ localLinks, resourcesDirPath }) => {
-      const tasks = new Listr();
+      const tasks = new Listr([], { concurrent: true, exitOnError: false });
 
       localLinks.forEach((link) => {
         const newTask = {
