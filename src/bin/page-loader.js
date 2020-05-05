@@ -4,7 +4,7 @@ import program from 'commander';
 
 import pageLoader from '..';
 
-program.version('0.4.0');
+program.version('1.0.0');
 
 const handleError = (error) => {
   if (error.config) {

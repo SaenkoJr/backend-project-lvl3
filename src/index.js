@@ -6,6 +6,7 @@ import cheerio from 'cheerio';
 import axios from 'axios';
 import { union, words } from 'lodash';
 import debug from 'debug';
+import Listr from 'listr';
 import 'axios-debug-log';
 
 const log = debug('page-loader');
@@ -103,30 +104,39 @@ export default (pageUrl, outputPath) => {
     .get(pageUrl)
     .then(({ data }) => data)
     .then((html) => {
-      const links = getLinks(html)
-        .filter(isResourceLink)
-        .filter(((link) => isLocalLink(link, pageUrl)));
-
       const htmlFilePath = path.join(outputPath, buildHtmlName(pageUrl));
-      const resourcesDirPath = path.join(outputPath, buildDirName(pageUrl));
       const modifiedHtml = modifyLocalLinks(html, pageUrl);
 
       return fs.writeFile(htmlFilePath, modifiedHtml)
         .then(() => log('page has been saved to %o', htmlFilePath))
-        .then(() => (
-          pageUrl
-            |> buildDirName
-            |> ((dirname) => path.join(outputPath, dirname))
-            |> fs.mkdir
-        ))
+        .then(() => html);
+    })
+    .then((html) => {
+      const localLinks = getLinks(html)
+        .filter(isResourceLink)
+        .filter(((link) => isLocalLink(link, pageUrl)))
+        .map((link) => new URL(link, pageUrl));
+
+      const resourcesDirName = buildDirName(pageUrl);
+      const resourcesDirPath = path.join(outputPath, resourcesDirName);
+
+      return fs.mkdir(resourcesDirPath)
         .then(() => log('resources directory has been created'))
-        .then(() => {
-          const promises = links
-            .map((link) => {
-              const resourceUrl = new URL(link, pageUrl);
-              return download(resourceUrl.toString(), resourcesDirPath);
-            });
-          return Promise.all(promises);
-        });
-    });
+        .then(() => ({ localLinks, resourcesDirPath }));
+    })
+    .then(({ localLinks, resourcesDirPath }) => {
+      const tasks = new Listr();
+
+      localLinks.forEach((link) => {
+        const newTask = {
+          title: `Download ${link}`,
+          task: () => download(link.toString(), resourcesDirPath),
+        };
+
+        tasks.add(newTask);
+      });
+
+      return tasks;
+    })
+    .then((tasks) => tasks.run());
 };

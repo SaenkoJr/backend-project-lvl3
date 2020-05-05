@@ -6,6 +6,18 @@
 
 Console util for download the specified webpage
 
+# Install
+
+```
+$ npm install -g page-loader-saenkomm
+```
+
+or
+
+```
+$ yarn global add page-loader-saenkomm
+```
+
 # Usage 
 
 ```
@@ -19,7 +31,7 @@ Options:
   -h, --help                output usage information
 ```
 
-[![asciicast](https://asciinema.org/a/kCVQLUt60oJKX7wwOHjqkKE9y.svg)](https://asciinema.org/a/kCVQLUt60oJKX7wwOHjqkKE9y)
+[![asciicast](https://asciinema.org/a/QQTzVruNG1fu22iPOZBk53MC7.svg)](https://asciinema.org/a/QQTzVruNG1fu22iPOZBk53MC7)
 
 ### Run with debug
 
