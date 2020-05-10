@@ -1,5 +1,4 @@
 import path from 'path';
-import url from 'url';
 import { promises as fs, createWriteStream } from 'fs';
 
 import cheerio from 'cheerio';
@@ -18,7 +17,7 @@ const attrs = {
 };
 
 const buildNameFromUrl = (pageUrl) => {
-  const { hostname, pathname } = url.parse(pageUrl);
+  const { hostname, pathname } = new URL(pageUrl);
   const parts = union(
     words(hostname),
     words(pathname),
@@ -36,11 +35,6 @@ const buildResourceName = (resourcePath) => {
   return formatedDirName.concat('-', base);
 };
 
-const isResourceLink = (link) => {
-  const { ext } = path.parse(link);
-  return ext.length > 0;
-};
-
 const isLocalLink = (link, baseUrl) => {
   const { host } = new URL(link, baseUrl);
   const { host: currentHost } = new URL(baseUrl);
@@ -48,41 +42,29 @@ const isLocalLink = (link, baseUrl) => {
   return host === currentHost;
 };
 
-const getLinks = (html) => {
+const processHtml = (html, pageUrl) => {
   const $ = cheerio.load(html);
-  const links = Object.entries(attrs).map(([tag, attr]) => (
+
+  const urls = Object.entries(attrs).flatMap(([tag, attr]) => (
     $(tag)
       .filter((_, el) => $(el).attr(attr))
+      .filter((_, el) => isLocalLink($(el).attr(attr), pageUrl))
       .toArray()
-      .map((elem) => $(elem).attr(attr))
+      .map((elem) => {
+        const link = $(elem).attr(attr);
+        const resourcePath = path.join(
+          buildDirName(pageUrl),
+          buildResourceName(link),
+        );
+
+        $(elem).attr(attr, resourcePath);
+        log('link has been changed (%o -> %o)', link, resourcePath);
+
+        return new URL(link, pageUrl);
+      })
   ));
 
-  return links.flat();
-};
-
-const modifyLocalLinks = (html, pageUrl) => {
-  const $ = cheerio.load(html);
-
-  Object.entries(attrs).forEach(([tag, attr]) => {
-    $(tag)
-      .filter((_, el) => $(el).attr(attr))
-      .each((_, elem) => {
-        const link = $(elem).attr(attr);
-
-        if (isLocalLink(link, pageUrl)) {
-          const resourcePath = path.join(
-            buildDirName(pageUrl),
-            buildResourceName(link),
-          );
-
-          log('link has been changed (%o -> %o)', link, resourcePath);
-
-          $(elem).attr(attr, resourcePath);
-        }
-      });
-  });
-
-  return $.html();
+  return { urls, processedHtml: $.html() };
 };
 
 const download = (resourceUrl, outputPath) => axios
@@ -100,43 +82,27 @@ export default (pageUrl, outputPath) => {
   log('run app');
   log('download page data from', pageUrl);
 
+  const htmlFilePath = path.join(outputPath, buildHtmlName(pageUrl));
+  const resourcesDirName = buildDirName(pageUrl);
+  const resourcesDirPath = path.join(outputPath, resourcesDirName);
+
   return axios
     .get(pageUrl)
-    .then(({ data }) => data)
-    .then((html) => {
-      const htmlFilePath = path.join(outputPath, buildHtmlName(pageUrl));
-      const modifiedHtml = modifyLocalLinks(html, pageUrl);
+    .then(({ data: html }) => {
+      const { processedHtml, urls } = processHtml(html, pageUrl);
 
-      return fs.writeFile(htmlFilePath, modifiedHtml)
+      return fs.writeFile(htmlFilePath, processedHtml)
         .then(() => log('page has been saved to %o', htmlFilePath))
-        .then(() => html);
+        .then(() => urls);
     })
-    .then((html) => {
-      const localLinks = getLinks(html)
-        .filter(isResourceLink)
-        .filter(((link) => isLocalLink(link, pageUrl)))
-        .map((link) => new URL(link, pageUrl));
+    .then((urls) => fs.mkdir(resourcesDirPath)
+      .then(() => log('resources directory has been created'))
+      .then(() => {
+        const tasks = urls.map((url) => ({
+          title: `Download ${url}`,
+          task: () => download(url.toString(), resourcesDirPath),
+        }));
 
-      const resourcesDirName = buildDirName(pageUrl);
-      const resourcesDirPath = path.join(outputPath, resourcesDirName);
-
-      return fs.mkdir(resourcesDirPath)
-        .then(() => log('resources directory has been created'))
-        .then(() => ({ localLinks, resourcesDirPath }));
-    })
-    .then(({ localLinks, resourcesDirPath }) => {
-      const tasks = new Listr([], { concurrent: true, exitOnError: false });
-
-      localLinks.forEach((link) => {
-        const newTask = {
-          title: `Download ${link}`,
-          task: () => download(link.toString(), resourcesDirPath),
-        };
-
-        tasks.add(newTask);
-      });
-
-      return tasks;
-    })
-    .then((tasks) => tasks.run());
+        return new Listr(tasks, { concurrent: true, exitOnError: false }).run();
+      }));
 };

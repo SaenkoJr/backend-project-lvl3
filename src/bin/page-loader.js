@@ -27,7 +27,6 @@ program
     pageLoader(url, program.output)
       .then(() => {
         console.log('Loading is complete');
-        process.exit(0);
       })
       .catch((e) => {
         console.error(handleError(e));
