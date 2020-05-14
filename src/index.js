@@ -85,24 +85,25 @@ export default (pageUrl, outputPath) => {
   const htmlFilePath = path.join(outputPath, buildHtmlName(pageUrl));
   const resourcesDirName = buildDirName(pageUrl);
   const resourcesDirPath = path.join(outputPath, resourcesDirName);
+  let resourcesUrls;
 
   return axios
     .get(pageUrl)
     .then(({ data: html }) => {
       const { processedHtml, urls } = processHtml(html, pageUrl);
+      resourcesUrls = urls;
 
-      return fs.writeFile(htmlFilePath, processedHtml)
-        .then(() => log('page has been saved to %o', htmlFilePath))
-        .then(() => urls);
+      return fs.writeFile(htmlFilePath, processedHtml);
     })
-    .then((urls) => fs.mkdir(resourcesDirPath)
-      .then(() => log('resources directory has been created'))
-      .then(() => {
-        const tasks = urls.map((url) => ({
-          title: `Download ${url}`,
-          task: () => download(url.toString(), resourcesDirPath),
-        }));
-
-        return new Listr(tasks, { concurrent: true, exitOnError: false }).run();
+    .then(() => log('page has been saved to %o', htmlFilePath))
+    .then(() => fs.mkdir(resourcesDirPath))
+    .then(() => log('resources directory has been created'))
+    .then(() => {
+      const tasks = resourcesUrls.map((url) => ({
+        title: `Download ${url}`,
+        task: () => download(url.toString(), resourcesDirPath),
       }));
+
+      return new Listr(tasks, { concurrent: true, exitOnError: false }).run();
+    });
 };
